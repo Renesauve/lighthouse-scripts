@@ -1,4 +1,4 @@
-/* Lighthouse Aquatics — Mega Nav v5.3 */
+/* Lighthouse Aquatics — Mega Nav v6 (fully dynamic, no scraping) */
 
 (function() {
   var css = [
@@ -62,29 +62,46 @@
     } catch (e) { return null; }
   }
 
-  /* ── Build categoryId → {url, image} from ALL nested objects ── */
-  function buildCategoryMap() {
-    var map = {};
+  /* ── Build category maps: byId and byName ── */
+  function buildCategoryMaps() {
+    var byId = {};
+    var byName = {};
     var state = getState();
-    if (!state) return map;
+    if (!state) return { byId: byId, byName: byName };
 
+    function addCat(id, name, url, image) {
+      var pathname = url;
+      try { pathname = new URL(url).pathname; } catch (e) {}
+      var entry = { url: pathname, image: image || '', name: name || '' };
+      if (id) byId[id] = entry;
+      if (name) {
+        byName[name.toLowerCase().trim()] = entry;
+        /* Also index with words reversed: "Corals LPS" → "lps corals" */
+        var words = name.toLowerCase().trim().split(/\s+/);
+        if (words.length > 1) {
+          byName[words.reverse().join(' ')] = entry;
+        }
+      }
+    }
+
+    /* Deep scan for category objects */
     function scan(obj, depth) {
       if (depth > 6 || !obj || typeof obj !== 'object') return;
       if (Array.isArray(obj)) {
         for (var i = 0; i < obj.length; i++) scan(obj[i], depth + 1);
         return;
       }
-      /* If this object has an id and a url with /products/, capture it */
       if (obj.id && obj.url && typeof obj.url === 'string' && obj.url.indexOf('/products/') !== -1) {
-        try { map[obj.id] = { url: new URL(obj.url).pathname, image: obj.imageUrl || obj.thumbnailImageUrl || '' }; }
-        catch (e) { map[obj.id] = { url: obj.url, image: obj.imageUrl || obj.thumbnailImageUrl || '' }; }
+        addCat(obj.id, obj.name, obj.url, obj.imageUrl || obj.thumbnailImageUrl || '');
       }
       var keys = Object.keys(obj);
       for (var k = 0; k < keys.length; k++) scan(obj[keys[k]], depth + 1);
     }
     scan(state, 0);
-    console.log('Mega nav: category map built with', Object.keys(map).length, 'entries');
-    return map;
+
+    console.log('Mega nav: categories by ID:', Object.keys(byId).length, '| by name:', Object.keys(byName).length);
+    console.log('Mega nav: category names:', Object.keys(byName).join(', '));
+    return { byId: byId, byName: byName };
   }
 
   /* ── Get menu items from initialState ── */
@@ -102,24 +119,49 @@
     return [];
   }
 
-  /* ── Build config from initialState structure + scraped URL map ── */
-  function buildConfig(menuItem, catMap, urlMap) {
+  /* ── Resolve URL for a menu item ── */
+  function resolveUrl(item, cats) {
+    /* 1. Try category ID */
+    if (item.categoryId && cats.byId[item.categoryId]) {
+      return cats.byId[item.categoryId].url;
+    }
+    /* 2. Try exact name match */
+    var name = (item.title || '').toLowerCase().trim();
+    if (cats.byName[name]) {
+      return cats.byName[name].url;
+    }
+    /* 3. Try partial match: find a category whose name contains the title or vice versa */
+    var catNames = Object.keys(cats.byName);
+    for (var i = 0; i < catNames.length; i++) {
+      if (catNames[i].indexOf(name) !== -1 || name.indexOf(catNames[i]) !== -1) {
+        return cats.byName[catNames[i]].url;
+      }
+    }
+    /* 4. Fallback: slugify title */
+    return '/products/' + name.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+
+  /* ── Resolve image for a menu item ── */
+  function resolveImage(item, cats) {
+    if (item.categoryId && cats.byId[item.categoryId]) {
+      return cats.byId[item.categoryId].image;
+    }
+    var name = (item.title || '').toLowerCase().trim();
+    if (cats.byName[name]) return cats.byName[name].image;
+    var catNames = Object.keys(cats.byName);
+    for (var i = 0; i < catNames.length; i++) {
+      if (catNames[i].indexOf(name) !== -1 || name.indexOf(catNames[i]) !== -1) {
+        return cats.byName[catNames[i]].image;
+      }
+    }
+    return '';
+  }
+
+  /* ── Build config from initialState ── */
+  function buildConfig(menuItem, cats) {
     var config = { sidebar: [], promos: defaultPromos };
     var nested = menuItem.nestedItems || [];
     if (nested.length === 0) return null;
-
-    function getUrl(item) {
-      /* Try scraped URL first (most reliable) */
-      if (urlMap[item.title]) return urlMap[item.title];
-      /* Try category map */
-      if (item.categoryId && catMap[item.categoryId]) return catMap[item.categoryId].url;
-      return '#';
-    }
-
-    function getImage(item) {
-      if (item.categoryId && catMap[item.categoryId]) return catMap[item.categoryId].image;
-      return '';
-    }
 
     var hasDeep = nested.some(function(n) {
       return n.nestedItems && n.nestedItems.length > 0;
@@ -130,20 +172,20 @@
         var children = [];
         if (cat.nestedItems) {
           cat.nestedItems.forEach(function(child) {
-            children.push({ label: child.title, url: getUrl(child), image: getImage(child) });
+            children.push({ label: child.title, url: resolveUrl(child, cats), image: resolveImage(child, cats) });
           });
         }
         config.sidebar.push({
-          label: cat.title, url: getUrl(cat), image: getImage(cat), children: children
+          label: cat.title, url: resolveUrl(cat, cats), image: resolveImage(cat, cats), children: children
         });
       });
     } else {
       var children = [];
       nested.forEach(function(item) {
-        children.push({ label: item.title, url: getUrl(item), image: getImage(item) });
+        children.push({ label: item.title, url: resolveUrl(item, cats), image: resolveImage(item, cats) });
       });
       config.sidebar.push({
-        label: menuItem.title, url: getUrl(menuItem), image: getImage(menuItem), children: children
+        label: menuItem.title, url: resolveUrl(menuItem, cats), image: resolveImage(menuItem, cats), children: children
       });
     }
     return config;
@@ -205,7 +247,7 @@
   }
 
   waitForNav(function(nav) {
-    var catMap = buildCategoryMap();
+    var cats = buildCategoryMaps();
     var menuItems = getMenuItems();
 
     console.log('Mega nav: menu items:', menuItems.map(function(m) { return m.title; }).join(', '));
@@ -219,7 +261,6 @@
     document.body.appendChild(container);
 
     var closeTimeout = null;
-    var configCache = {};
 
     function closeMenu() {
       closeTimeout = setTimeout(function() {
@@ -252,21 +293,7 @@
       overlay.classList.add('is-open');
     }
 
-    /* Hide a single Vue-added dropdown node */
-    function suppressNode(node) {
-      if (node.nodeType !== 1) return;
-      /* Only target elements that contain links and aren't the nav structure itself */
-      if (!node.classList) return;
-      if (node.classList.contains('relative')) return;
-      if (node.tagName === 'A') return;
-      if (node.tagName === 'NAV') return;
-      var links = node.querySelectorAll ? node.querySelectorAll('a') : [];
-      if (links.length > 0) {
-        node.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important;pointer-events:none!important;';
-      }
-    }
-
-    /* Attach to each root nav item that has dropdown children */
+    /* Attach to each root nav item */
     nav.querySelectorAll('.root-item').forEach(function(rootEl) {
       var linkEl = rootEl.querySelector('a');
       if (!linkEl) return;
@@ -281,73 +308,32 @@
       }
       if (!menuItem) return;
 
-      console.log('Mega nav: attached "' + title + '"');
+      var config = buildConfig(menuItem, cats);
+      if (!config || config.sidebar.length === 0) return;
 
-      var scraped = false;
-      var suppressDropdowns = false;
+      /* Log resolved URLs for debugging */
+      config.sidebar.forEach(function(s) {
+        console.log('Mega nav: "' + s.label + '" → ' + s.url);
+        if (s.children) s.children.forEach(function(c) {
+          console.log('  "' + c.label + '" → ' + c.url);
+        });
+      });
 
-      /* MutationObserver: suppress Vue dropdowns AFTER first scrape */
+      /* Suppress Vue dropdown immediately — no flash */
       new MutationObserver(function(mutations) {
-        if (!suppressDropdowns) return; /* let Vue render on first hover */
         mutations.forEach(function(m) {
           for (var i = 0; i < m.addedNodes.length; i++) {
-            suppressNode(m.addedNodes[i]);
+            var node = m.addedNodes[i];
+            if (node.nodeType !== 1) continue;
+            if (node.tagName === 'A' || node.tagName === 'NAV') continue;
+            if (node.classList && node.classList.contains('relative')) continue;
+            node.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important;pointer-events:none!important;';
           }
         });
-      }).observe(rootEl, { childList: true, subtree: true });
+      }).observe(rootEl, { childList: true, subtree: false });
 
       rootEl.addEventListener('mouseenter', function() {
-        if (scraped && configCache[title]) {
-          /* Already have data — show mega nav, Vue dropdown is suppressed by observer */
-          showMegaNav(configCache[title]);
-          return;
-        }
-
-        /* First hover: let Vue render the dropdown for 400ms, then scrape */
-        setTimeout(function() {
-          /* Debug: log everything inside rootEl */
-          var allLinks = rootEl.querySelectorAll('a');
-          var rootLink = rootEl.querySelector(':scope > a');
-          console.log('Mega nav DEBUG "' + title + '": total <a> tags:', allLinks.length);
-          allLinks.forEach(function(a, idx) {
-            if (a === rootLink) return;
-            console.log('  link[' + idx + ']:', 'text="' + a.textContent.trim() + '"', 'href="' + a.getAttribute('href') + '"', 'outerHTML=' + a.outerHTML.substring(0, 200));
-          });
-
-          /* Also log all child elements of rootEl */
-          console.log('Mega nav DEBUG "' + title + '": rootEl children:', rootEl.children.length);
-          for (var c = 0; c < rootEl.children.length; c++) {
-            var ch = rootEl.children[c];
-            console.log('  child[' + c + ']:', ch.tagName, ch.className, 'innerHTML length:', ch.innerHTML ? ch.innerHTML.length : 0);
-          }
-
-          /* Scrape all links */
-          var urlMap = {};
-          allLinks.forEach(function(a) {
-            if (a === rootLink) return;
-            var text = a.textContent.trim();
-            var href = a.getAttribute('href');
-            if (text && href && href !== '#' && href !== '') {
-              urlMap[text] = href;
-            }
-          });
-          console.log('Mega nav: scraped "' + title + '":', JSON.stringify(urlMap));
-
-          var config = buildConfig(menuItem, catMap, urlMap);
-          if (config) {
-            configCache[title] = config;
-            scraped = true;
-            suppressDropdowns = true; /* now suppress Vue on future hovers */
-
-            /* Hide the current Vue dropdown */
-            var children = rootEl.children;
-            for (var j = 0; j < children.length; j++) {
-              suppressNode(children[j]);
-            }
-
-            showMegaNav(config);
-          }
-        }, 250);
+        showMegaNav(config);
       });
 
       rootEl.addEventListener('mouseleave', function() { closeMenu(); });
@@ -362,6 +348,6 @@
       overlay.classList.remove('is-open');
     });
 
-    console.log('Lighthouse mega nav v5.1 loaded');
+    console.log('Lighthouse mega nav v6 loaded');
   });
 })();
