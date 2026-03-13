@@ -50,10 +50,28 @@
   ];
 
   /* ── Build a categoryId → URL map from initialState ── */
+  function parseState() {
+    try {
+      var raw = window.initialState;
+      if (!raw) return null;
+      if (typeof raw === 'string') return JSON.parse(raw);
+      return raw;
+    } catch (e) {
+      console.warn('Mega nav: failed to parse initialState', e);
+      return null;
+    }
+  }
+
+  var _parsedState = null;
+  function getState() {
+    if (!_parsedState) _parsedState = parseState();
+    return _parsedState;
+  }
+
   function buildCategoryMap() {
     var map = {};
     try {
-      var state = window.initialState;
+      var state = getState();
       if (!state) return map;
 
       /* Try storeData.categories */
@@ -127,7 +145,7 @@
   /* ── Read menu items from initialState ── */
   function getMenuItems() {
     try {
-      var state = window.initialState;
+      var state = getState();
       if (!state || !state.tile || !state.tile.tileList) return [];
       for (var t = 0; t < state.tile.tileList.length; t++) {
         var tile = state.tile.tileList[t];
