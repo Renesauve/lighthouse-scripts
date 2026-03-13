@@ -252,28 +252,18 @@
       overlay.classList.add('is-open');
     }
 
-    function hideVueDropdown(rootEl) {
-      for (var j = 0; j < rootEl.children.length; j++) {
-        var ch = rootEl.children[j];
-        if (ch.tagName === 'A') continue; /* skip the root link */
-        if (ch.querySelectorAll && ch.querySelectorAll('a').length > 0) {
-          ch.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important;pointer-events:none!important;';
-        }
+    /* Hide a single Vue-added dropdown node */
+    function suppressNode(node) {
+      if (node.nodeType !== 1) return;
+      /* Only target elements that contain links and aren't the nav structure itself */
+      if (!node.classList) return;
+      if (node.classList.contains('relative')) return;
+      if (node.tagName === 'A') return;
+      if (node.tagName === 'NAV') return;
+      var links = node.querySelectorAll ? node.querySelectorAll('a') : [];
+      if (links.length > 0) {
+        node.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important;pointer-events:none!important;';
       }
-    }
-
-    function scrapeUrlsFromRoot(rootEl) {
-      var map = {};
-      var rootLink = rootEl.querySelector(':scope > a');
-      rootEl.querySelectorAll('a').forEach(function(a) {
-        if (a === rootLink) return;
-        var text = a.textContent.trim();
-        var href = a.getAttribute('href');
-        if (text && href && href !== '#' && href !== '') {
-          map[text] = href;
-        }
-      });
-      return map;
     }
 
     /* Attach to each root nav item that has dropdown children */
@@ -293,26 +283,56 @@
 
       console.log('Mega nav: attached "' + title + '"');
 
+      var scraped = false;
+      var suppressDropdowns = false;
+
+      /* MutationObserver: suppress Vue dropdowns AFTER first scrape */
+      new MutationObserver(function(mutations) {
+        if (!suppressDropdowns) return; /* let Vue render on first hover */
+        mutations.forEach(function(m) {
+          for (var i = 0; i < m.addedNodes.length; i++) {
+            suppressNode(m.addedNodes[i]);
+          }
+        });
+      }).observe(rootEl, { childList: true, subtree: true });
+
       rootEl.addEventListener('mouseenter', function() {
-        if (configCache[title]) {
-          /* Already scraped — show immediately and suppress Vue dropdown */
-          hideVueDropdown(rootEl);
+        if (scraped && configCache[title]) {
+          /* Already have data — show mega nav, Vue dropdown is suppressed by observer */
           showMegaNav(configCache[title]);
           return;
         }
 
-        /* First hover: let Vue render the dropdown, then scrape after a short delay */
+        /* First hover: let Vue render the dropdown for 250ms, then scrape */
         setTimeout(function() {
-          var urlMap = scrapeUrlsFromRoot(rootEl);
+          /* Scrape all links from inside this root item (Vue's dropdown) */
+          var urlMap = {};
+          var rootLink = rootEl.querySelector(':scope > a');
+          rootEl.querySelectorAll('a').forEach(function(a) {
+            if (a === rootLink) return;
+            var text = a.textContent.trim();
+            var href = a.getAttribute('href');
+            if (text && href && href !== '#' && href !== '') {
+              urlMap[text] = href;
+            }
+          });
           console.log('Mega nav: scraped "' + title + '":', JSON.stringify(urlMap));
 
           var config = buildConfig(menuItem, catMap, urlMap);
           if (config) {
             configCache[title] = config;
-            hideVueDropdown(rootEl);
+            scraped = true;
+            suppressDropdowns = true; /* now suppress Vue on future hovers */
+
+            /* Hide the current Vue dropdown */
+            var children = rootEl.children;
+            for (var j = 0; j < children.length; j++) {
+              suppressNode(children[j]);
+            }
+
             showMegaNav(config);
           }
-        }, 200);
+        }, 250);
       });
 
       rootEl.addEventListener('mouseleave', function() { closeMenu(); });
