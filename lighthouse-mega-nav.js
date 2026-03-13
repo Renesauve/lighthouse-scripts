@@ -18,10 +18,10 @@
     '.lm-grid{display:none;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px 28px;align-content:start;position:absolute;inset:0;overflow-y:auto}',
     '.lm-grid.is-visible{display:grid}',
 
-    '.lm-grid-item{text-decoration:none;color:#333;text-align:center;padding:8px;border-radius:10px;transition:transform 0.15s}',
+    '.lm-grid-item{text-decoration:none;color:#333;text-align:center;padding:8px;border-radius:10px;transition:transform 0.15s;overflow:hidden;min-width:0}',
     '.lm-grid-item:hover{transform:translateY(-2px)}',
     '.lm-grid-item img{width:80px;height:80px;object-fit:cover;border-radius:12px;margin:0 auto 6px;display:block}',
-    '.lm-grid-item span{font-size:13px;font-weight:600;display:block;color:#333}',
+    '.lm-grid-item span{font-size:12px;font-weight:600;display:block;color:#333;word-wrap:break-word;overflow-wrap:break-word;line-height:1.3;max-height:2.6em;overflow:hidden}',
 
     '.lm-grid .lm-viewall{grid-column:1/-1;text-align:center;padding:8px 0}',
     '.lm-viewall a{font-size:14px;font-weight:600;color:#0073e6;text-decoration:none;display:inline-flex;align-items:center;gap:6px}',
