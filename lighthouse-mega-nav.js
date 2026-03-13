@@ -1,5 +1,5 @@
-/* Lighthouse Aquatics — Mega Nav v3 */
-/* Sidebar categories + center grid like Top Shelf Aquatics */
+/* Lighthouse Aquatics — Mega Nav v4 (dynamic) */
+/* Reads menu structure from Lightspeed's nav — no hardcoded items */
 
 (function() {
   var css = [
@@ -10,32 +10,26 @@
 
     '.lm-wrap{display:flex;max-width:1400px;margin:0 auto;min-height:380px}',
 
-    /* Sidebar */
     '.lm-sidebar{width:230px;min-width:230px;background:#f8f9fa;border-right:1px solid #eee;padding:12px 0;overflow-y:auto}',
     '.lm-sidebar a{display:flex;align-items:center;gap:12px;padding:10px 18px;font-size:14px;font-weight:500;color:#333;text-decoration:none;transition:all 0.12s;border-left:3px solid transparent}',
     '.lm-sidebar a:hover,.lm-sidebar a.is-active{background:#fff;color:#0073e6;border-left-color:#0073e6}',
-    '.lm-sidebar a img{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0}',
 
-    /* Center grid */
     '.lm-grid-wrap{flex:1;position:relative}',
-    '.lm-grid{display:none;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px 28px;align-content:start;position:absolute;inset:0;overflow-y:auto}',
+    '.lm-grid{display:none;grid-template-columns:repeat(3,1fr);gap:20px;padding:24px 28px;align-content:start;position:absolute;inset:0;overflow-y:auto}',
     '.lm-grid.is-visible{display:grid}',
 
-    '.lm-grid-item{text-decoration:none;color:#333;text-align:center;transition:transform 0.15s;padding:8px;border-radius:10px}',
-    '.lm-grid-item:hover{transform:translateY(-3px);background:#f8f9fa}',
-    '.lm-grid-item img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;margin-bottom:8px;background:#f0f0f0}',
-    '.lm-grid-item span{font-size:13px;font-weight:600;display:block;color:#333}',
+    '.lm-grid-item{text-decoration:none;color:#333;padding:12px 16px;border-radius:10px;transition:background 0.15s;display:flex;align-items:center;gap:10px}',
+    '.lm-grid-item:hover{background:#f0f4ff}',
+    '.lm-grid-item span{font-size:14px;font-weight:600;display:block;color:#333}',
 
     '.lm-grid .lm-viewall{grid-column:1/-1;text-align:center;padding:8px 0}',
     '.lm-viewall a{font-size:14px;font-weight:600;color:#0073e6;text-decoration:none;display:inline-flex;align-items:center;gap:6px}',
     '.lm-viewall a:hover{text-decoration:underline}',
 
-    /* Empty state */
     '.lm-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center}',
     '.lm-empty a{display:inline-block;margin-top:12px;padding:10px 24px;background:#1a3a5c;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px}',
     '.lm-empty a:hover{background:#0073e6}',
 
-    /* Promos */
     '.lm-promos{width:260px;min-width:260px;padding:14px;display:flex;flex-direction:column;gap:10px;border-left:1px solid #eee;background:#fafafa}',
     '.lm-promo{position:relative;border-radius:10px;overflow:hidden;flex:1;min-height:120px;display:flex;align-items:flex-end;padding:14px;text-decoration:none;color:#fff}',
     '.lm-promo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}',
@@ -49,217 +43,143 @@
   style.appendChild(document.createTextNode(css.join('')));
   document.head.appendChild(style);
 
-  /* ── Placeholder images (Top Shelf Aquatics) ── */
-  var TSA = 'https://topshelfaquatics.com/cdn/shop/collections/';
+  /* ── Promo images (only thing still hardcoded — store-specific branding) ── */
   var TSAF = 'https://topshelfaquatics.com/cdn/shop/files/';
-  var imgs = [
-    TSA + 'Clownfish-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'Tangs-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'wrasse-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'goby-fish-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'beginner-fish-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'mandarin-fish-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'aquarium-shrimp-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'starfish-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'urchins-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'aquarium-crabs-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'berghia-nudibranch-for-sale.webp?crop=center&height=300&width=300',
-    TSA + 'non-reef-safe-fish.webp?crop=center&height=300&width=300',
-    TSA + 'saltwater-fish-for-sale_1.webp?width=300',
-    TSA + 'saltwater-inverts-for-sale.webp?width=300',
-    TSA + 'anemones-for-sale_67216c95-8676-494a-a3e0-1b0d0da08a4e.webp?width=300'
+  var defaultPromos = [
+    { img: TSAF + 'top-shelf-aquatics-macroalgae-trifecta-1161127572.webp?v=1746568318&width=800', text: 'Shop Now', url: '/products/livestock' },
+    { img: TSAF + 'saltwater-aquarium-copepods_a5676231-b226-4496-88cc-889633207dd0.jpg?v=1742313702&width=800', text: 'Visit Us In Store', url: '/contact-us' }
   ];
-  var thumbs = [
-    TSA + 'saltwater-fish-for-sale_1.webp?width=80',
-    TSA + 'saltwater-inverts-for-sale.webp?width=80',
-    TSA + 'anemones-for-sale_67216c95-8676-494a-a3e0-1b0d0da08a4e.webp?width=80',
-    TSA + 'clam-icon.webp?width=80',
-    TSA + 'Clownfish-for-sale.webp?crop=center&height=80&width=80',
-    TSA + 'Tangs-for-sale.webp?crop=center&height=80&width=80',
-    TSA + 'wrasse-for-sale.webp?crop=center&height=80&width=80',
-    TSA + 'goby-fish-for-sale.webp?crop=center&height=80&width=80',
-    TSA + 'aquarium-shrimp-for-sale.webp?crop=center&height=80&width=80',
-    TSA + 'starfish-for-sale.webp?crop=center&height=80&width=80'
-  ];
-  function gi(i) { return imgs[i % imgs.length]; }
-  function gt(i) { return thumbs[i % thumbs.length]; }
 
-  /* ── Menu data ── */
-  var menus = {
-    'Fish & Inverts': {
-      sidebar: [
-        {
-          label: 'Saltwater Fish',
-          url: '/products/saltwater',
-          children: [
-            { label: 'All Saltwater Fish', url: '/products/saltwater' },
-            { label: 'Livestock', url: '/products/livestock' },
-            { label: 'Fresh Water', url: '/products/fresh-water' }
-          ]
-        },
-        {
-          label: 'Saltwater Inverts',
-          url: '/products/cleaner-crews',
-          children: [
-            { label: 'Cleaner Crews', url: '/products/cleaner-crews' }
-          ]
-        },
-        {
-          label: 'Anemones',
-          url: '/products/livestock',
-          children: []
-        },
-        {
-          label: 'Clams',
-          url: '/products/livestock',
-          children: []
+  /* ── Read menu structure from initialState ── */
+  function getMenuStructure() {
+    var structure = {};
+    try {
+      var state = window.initialState;
+      if (!state || !state.tile || !state.tile.tileList) return structure;
+
+      var items = null;
+      for (var t = 0; t < state.tile.tileList.length; t++) {
+        var tile = state.tile.tileList[t];
+        if (tile.content && tile.content.menu && tile.content.menu.items) {
+          items = tile.content.menu.items;
+          break;
         }
-      ],
-      promos: [
-        { img: TSAF + 'top-shelf-aquatics-macroalgae-trifecta-1161127572.webp?v=1746568318&width=800', text: 'Shop All Livestock', url: '/products/livestock' }
-      ]
-    },
-    'Live Corals': {
-      sidebar: [
-        {
-          label: 'Live Corals',
-          url: '/products/corals-lps',
-          children: [
-            { label: 'Acropora', url: '/products/corals-sps' },
-            { label: 'Chalice Corals', url: '/products/corals-lps' },
-            { label: 'Goniopora', url: '/products/corals-lps' },
-            { label: 'LPS Corals', url: '/products/corals-lps' },
-            { label: 'Montipora', url: '/products/corals-sps' },
-            { label: 'Soft Corals', url: '/products/corals-soft' },
-            { label: 'SPS Corals', url: '/products/corals-sps' },
-            { label: 'Torch Corals', url: '/products/corals-lps' },
-            { label: 'Zoanthids', url: '/products/corals-misc' }
-          ]
-        },
-        {
-          label: 'WYSIWYG Corals',
-          url: '/products/corals-misc',
-          children: []
-        },
-        {
-          label: 'Signature Corals',
-          url: '/products/corals-misc',
-          children: []
-        },
-        {
-          label: 'LHA Vault',
-          url: '/products/corals-misc',
-          children: []
-        },
-        {
-          label: 'Coral Colonies',
-          url: '/products/corals-misc',
-          children: []
-        },
-        {
-          label: 'Beginner Corals',
-          url: '/products/corals-soft',
-          children: []
-        },
-        {
-          label: 'Coral Frag Packs',
-          url: '/products/corals-misc',
-          children: []
-        },
-        {
-          label: 'Anemones',
-          url: '/products/livestock',
-          children: []
+      }
+      if (!items) return structure;
+
+      items.forEach(function(item) {
+        if (item.nestedItems && item.nestedItems.length > 0) {
+          structure[item.title] = {
+            nestedItems: item.nestedItems,
+            hasDeepNesting: item.nestedItems.some(function(n) {
+              return n.nestedItems && n.nestedItems.length > 0;
+            })
+          };
         }
-      ],
-      promos: [
-        { img: TSAF + 'top-shelf-aquatics-macroalgae-trifecta-1161127572.webp?v=1746568318&width=800', text: 'New Coral Arrivals', url: '/products/corals-lps' },
-        { img: TSAF + 'saltwater-aquarium-copepods_a5676231-b226-4496-88cc-889633207dd0.jpg?v=1742313702&width=800', text: 'Visit Us In Store', url: '/contact-us' }
-      ]
-    },
-    'Aquarium Supplies': {
-      sidebar: [
-        {
-          label: 'Aquariums',
-          url: '/products/aquariums',
-          children: [
-            { label: 'Aquariums', url: '/products/aquariums' },
-            { label: 'Complete Systems', url: '/products/aquarium-complete-systems' },
-            { label: 'Furniture', url: '/products/furniture' }
-          ]
-        },
-        {
-          label: 'Equipment',
-          url: '/products/equipment',
-          children: [
-            { label: 'All Equipment', url: '/products/equipment' },
-            { label: 'Lighting', url: '/products/lighting' },
-            { label: 'Parts', url: '/products/parts' }
-          ]
-        },
-        {
-          label: 'Filtration',
-          url: '/products/filtration',
-          children: [
-            { label: 'All Filtration', url: '/products/filtration' },
-            { label: 'Water', url: '/products/water' }
-          ]
-        },
-        {
-          label: 'Food',
-          url: '/products/food-dry',
-          children: [
-            { label: 'Dry Food', url: '/products/food-dry' },
-            { label: 'Frozen Food', url: '/products/food-frozen' }
-          ]
-        },
-        {
-          label: 'Supplements',
-          url: '/products/supplements',
-          children: [
-            { label: 'All Supplements', url: '/products/supplements' }
-          ]
-        },
-        {
-          label: 'Dry Goods',
-          url: '/products/dry-goods',
-          children: [
-            { label: 'Dry Goods', url: '/products/dry-goods' },
-            { label: 'Decoration', url: '/products/decoration' }
-          ]
-        }
-      ],
-      promos: [
-        { img: TSAF + 'saltwater-aquarium-copepods_a5676231-b226-4496-88cc-889633207dd0.jpg?v=1742313702&width=800', text: 'Shop Best Sellers', url: '/products/equipment' }
-      ]
+      });
+    } catch (e) {
+      console.warn('Mega nav: could not read initialState', e);
     }
-  };
+    return structure;
+  }
 
-  /* ── Build HTML for a menu ── */
+  /* ── Scrape rendered Vue dropdown links ── */
+  function scrapeDropdownLinks(rootEl) {
+    var links = [];
+    /* Find all links inside dropdown containers (not the root link itself) */
+    var rootLink = rootEl.querySelector(':scope > a');
+    rootEl.querySelectorAll('a').forEach(function(a) {
+      if (a === rootLink) return;
+      var text = a.textContent.trim();
+      var href = a.getAttribute('href');
+      if (text && href) {
+        links.push({ label: text, url: href });
+      }
+    });
+    return links;
+  }
+
+  /* ── Build mega nav config by combining structure + scraped URLs ── */
+  function buildConfig(title, structure, scrapedLinks) {
+    var config = { sidebar: [], promos: defaultPromos };
+    var info = structure[title];
+
+    if (!info) {
+      /* No initialState data — use flat list from scrape */
+      if (scrapedLinks.length > 0) {
+        config.sidebar.push({
+          label: title,
+          url: scrapedLinks[0].url,
+          children: scrapedLinks
+        });
+      }
+      return config;
+    }
+
+    if (info.hasDeepNesting) {
+      /* Two-level: sidebar categories with child grids */
+      var linkMap = {};
+      scrapedLinks.forEach(function(l) { linkMap[l.label] = l.url; });
+
+      info.nestedItems.forEach(function(cat) {
+        var children = [];
+        if (cat.nestedItems) {
+          cat.nestedItems.forEach(function(child) {
+            children.push({
+              label: child.title,
+              url: linkMap[child.title] || '#'
+            });
+          });
+        }
+        config.sidebar.push({
+          label: cat.title,
+          url: linkMap[cat.title] || children[0] && children[0].url || '#',
+          children: children
+        });
+      });
+    } else {
+      /* Single-level: all items as children */
+      var linkMap = {};
+      scrapedLinks.forEach(function(l) { linkMap[l.label] = l.url; });
+
+      var children = [];
+      info.nestedItems.forEach(function(item) {
+        children.push({
+          label: item.title,
+          url: linkMap[item.title] || '#'
+        });
+      });
+      config.sidebar.push({
+        label: title,
+        url: scrapedLinks[0] && scrapedLinks[0].url || '#',
+        children: children
+      });
+    }
+
+    return config;
+  }
+
+  /* ── Build HTML ── */
   function buildMenu(config) {
     var html = '<div class="lm-wrap">';
 
-    /* Sidebar */
     html += '<div class="lm-sidebar">';
     config.sidebar.forEach(function(cat, i) {
       html += '<a href="' + cat.url + '" data-idx="' + i + '"' + (i === 0 ? ' class="is-active"' : '') + '>';
-      html += '<img src="' + gt(i) + '" alt="' + cat.label + '" loading="lazy">';
       html += cat.label + '</a>';
     });
     html += '</div>';
 
-    /* Grid panels */
     html += '<div class="lm-grid-wrap">';
     config.sidebar.forEach(function(cat, i) {
       html += '<div class="lm-grid' + (i === 0 ? ' is-visible' : '') + '" data-grid="' + i + '">';
 
-      if (cat.children.length > 0) {
-        cat.children.forEach(function(child, ci) {
+      if (cat.children && cat.children.length > 0) {
+        cat.children.forEach(function(child) {
           html += '<a class="lm-grid-item" href="' + child.url + '">';
-          html += '<img src="' + gi(ci + i * 4) + '" alt="' + child.label + '" loading="lazy">';
           html += '<span>' + child.label + '</span></a>';
         });
-        html += '<div class="lm-viewall"><a href="' + cat.url + '">Go to ' + cat.label + ' &rarr;</a></div>';
+        html += '<div class="lm-viewall"><a href="' + cat.url + '">View All ' + cat.label + ' &rarr;</a></div>';
       } else {
         html += '<div class="lm-empty">';
         html += '<p style="color:#888;font-size:14px;margin:0 0 4px">Browse our ' + cat.label + ' collection</p>';
@@ -271,7 +191,6 @@
     });
     html += '</div>';
 
-    /* Promos */
     if (config.promos && config.promos.length > 0) {
       html += '<div class="lm-promos">';
       config.promos.forEach(function(p) {
@@ -297,7 +216,70 @@
     }, 300);
   }
 
+  /* ── Phase 1: Trigger Vue to render all dropdowns so we can scrape URLs ── */
+  function triggerAndScrape(nav, cb) {
+    var rootItems = nav.querySelectorAll('.root-item');
+    var structure = getMenuStructure();
+    var menus = {};
+    var megaRoots = [];
+
+    /* Identify which root items have dropdowns */
+    rootItems.forEach(function(rootEl) {
+      var linkEl = rootEl.querySelector('a');
+      if (!linkEl) return;
+      var title = linkEl.textContent.trim();
+      if (structure[title] || rootEl.querySelector('[class*="dropdown"]')) {
+        megaRoots.push({ el: rootEl, title: title });
+      }
+    });
+
+    if (megaRoots.length === 0) {
+      cb(menus);
+      return;
+    }
+
+    /* Trigger each root item sequentially to let Vue render dropdowns */
+    var idx = 0;
+    function triggerNext() {
+      if (idx >= megaRoots.length) {
+        cb(menus);
+        return;
+      }
+
+      var item = megaRoots[idx];
+      /* Dispatch mouseenter to trigger Vue's v-if rendering */
+      item.el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+
+      /* Give Vue time to render the dropdown */
+      setTimeout(function() {
+        var scrapedLinks = scrapeDropdownLinks(item.el);
+        var config = buildConfig(item.title, structure, scrapedLinks);
+
+        if (config.sidebar.length > 0) {
+          menus[item.title] = { el: item.el, config: config };
+        }
+
+        /* Dispatch mouseleave to close it */
+        item.el.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+
+        idx++;
+        setTimeout(triggerNext, 100);
+      }, 300);
+    }
+
+    triggerNext();
+  }
+
   waitForNav(function(nav) {
+    /* Brief delay to let Vue fully hydrate */
+    setTimeout(function() {
+      triggerAndScrape(nav, function(menus) {
+        initMegaNav(nav, menus);
+      });
+    }, 800);
+  });
+
+  function initMegaNav(nav, menus) {
     var overlay = document.createElement('div');
     overlay.id = 'ls-mega-overlay';
     document.body.appendChild(overlay);
@@ -305,6 +287,9 @@
     var container = document.createElement('div');
     container.id = 'ls-mega-container';
     document.body.appendChild(container);
+
+    var menuTitles = Object.keys(menus);
+    console.log('Mega nav: built menus for:', menuTitles.join(', '));
 
     var closeTimeout = null;
 
@@ -322,7 +307,6 @@
       container.style.top = headerRect.bottom + 'px';
       container.innerHTML = buildMenu(config);
 
-      /* Wire sidebar hover */
       var sLinks = container.querySelectorAll('.lm-sidebar a');
       var grids = container.querySelectorAll('.lm-grid');
       sLinks.forEach(function(sl) {
@@ -340,13 +324,10 @@
       overlay.classList.add('is-open');
     }
 
-    /* Attach to nav items */
-    nav.querySelectorAll('.root-item').forEach(function(rootEl) {
-      var linkEl = rootEl.querySelector('a');
-      if (!linkEl) return;
-      var text = linkEl.textContent.trim();
-      var config = menus[text];
-      if (!config) return;
+    menuTitles.forEach(function(title) {
+      var entry = menus[title];
+      var rootEl = entry.el;
+      var config = entry.config;
 
       /* Suppress Vue dropdown */
       new MutationObserver(function(mutations) {
@@ -385,6 +366,6 @@
       overlay.classList.remove('is-open');
     });
 
-    console.log('Lighthouse mega nav loaded');
-  });
+    console.log('Lighthouse mega nav v4 loaded (dynamic)');
+  }
 })();
