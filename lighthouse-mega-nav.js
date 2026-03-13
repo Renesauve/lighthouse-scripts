@@ -2,9 +2,6 @@
 
 (function() {
   var css = [
-    /* Hide Vue default dropdowns immediately so there is no flash */
-    '.root-item > div:not(.relative){opacity:0!important;position:absolute!important;pointer-events:none!important;z-index:-1!important}',
-
     '#ls-mega-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9998}',
     '#ls-mega-container{display:none;position:fixed;left:0;right:0;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,0.12);z-index:9999;margin-top:-1px}',
     '#ls-mega-container.is-open{display:block}',
@@ -306,12 +303,27 @@
           return;
         }
 
-        /* First hover: let Vue render the dropdown for 250ms, then scrape */
+        /* First hover: let Vue render the dropdown for 400ms, then scrape */
         setTimeout(function() {
-          /* Scrape all links from inside this root item (Vue's dropdown) */
-          var urlMap = {};
+          /* Debug: log everything inside rootEl */
+          var allLinks = rootEl.querySelectorAll('a');
           var rootLink = rootEl.querySelector(':scope > a');
-          rootEl.querySelectorAll('a').forEach(function(a) {
+          console.log('Mega nav DEBUG "' + title + '": total <a> tags:', allLinks.length);
+          allLinks.forEach(function(a, idx) {
+            if (a === rootLink) return;
+            console.log('  link[' + idx + ']:', 'text="' + a.textContent.trim() + '"', 'href="' + a.getAttribute('href') + '"', 'outerHTML=' + a.outerHTML.substring(0, 200));
+          });
+
+          /* Also log all child elements of rootEl */
+          console.log('Mega nav DEBUG "' + title + '": rootEl children:', rootEl.children.length);
+          for (var c = 0; c < rootEl.children.length; c++) {
+            var ch = rootEl.children[c];
+            console.log('  child[' + c + ']:', ch.tagName, ch.className, 'innerHTML length:', ch.innerHTML ? ch.innerHTML.length : 0);
+          }
+
+          /* Scrape all links */
+          var urlMap = {};
+          allLinks.forEach(function(a) {
             if (a === rootLink) return;
             var text = a.textContent.trim();
             var href = a.getAttribute('href');
