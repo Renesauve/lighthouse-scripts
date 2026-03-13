@@ -1,4 +1,4 @@
-/* Lighthouse Aquatics — Mega Nav v5 (fully dynamic + images) */
+/* Lighthouse Aquatics — Mega Nav v5.1 */
 
 (function() {
   var css = [
@@ -44,14 +44,13 @@
   style.appendChild(document.createTextNode(css.join('')));
   document.head.appendChild(style);
 
-  /* ── Promo images (store branding) ── */
   var TSAF = 'https://topshelfaquatics.com/cdn/shop/files/';
   var defaultPromos = [
     { img: TSAF + 'top-shelf-aquatics-macroalgae-trifecta-1161127572.webp?v=1746568318&width=800', text: 'Shop Now', url: '/products/livestock' },
     { img: TSAF + 'saltwater-aquarium-copepods_a5676231-b226-4496-88cc-889633207dd0.jpg?v=1742313702&width=800', text: 'Visit Us In Store', url: '/contact-us' }
   ];
 
-  /* ── Parse initialState (it's a JSON string) ── */
+  /* ── Parse initialState ── */
   var _state = null;
   function getState() {
     if (_state) return _state;
@@ -63,33 +62,28 @@
     } catch (e) { return null; }
   }
 
-  /* ── Build categoryId → {url, imageUrl} map ── */
+  /* ── Build categoryId → {url, image} from ALL nested objects ── */
   function buildCategoryMap() {
     var map = {};
-    try {
-      var state = getState();
-      if (!state) return map;
-      var ext = state.externalContent;
-      if (ext && ext.category && ext.category.storeData && ext.category.storeData.categories) {
-        ext.category.storeData.categories.forEach(function(cat) {
-          if (cat.id) {
-            var url = cat.url || '';
-            try { url = new URL(url).pathname; } catch (e) {}
-            map[cat.id] = { url: url, image: cat.imageUrl || cat.thumbnailImageUrl || '', name: cat.name || '' };
-          }
-        });
+    var state = getState();
+    if (!state) return map;
+
+    function scan(obj, depth) {
+      if (depth > 6 || !obj || typeof obj !== 'object') return;
+      if (Array.isArray(obj)) {
+        for (var i = 0; i < obj.length; i++) scan(obj[i], depth + 1);
+        return;
       }
-      /* Also try categoryTree */
-      if (ext && ext.category && ext.category.categoryTree) {
-        ext.category.categoryTree.forEach(function(cat) {
-          if (cat.id && !map[cat.id]) {
-            var url = cat.urlPath || cat.url || '';
-            try { url = new URL(url).pathname; } catch (e) {}
-            map[cat.id] = { url: url, image: '', name: cat.name || '' };
-          }
-        });
+      /* If this object has an id and a url with /products/, capture it */
+      if (obj.id && obj.url && typeof obj.url === 'string' && obj.url.indexOf('/products/') !== -1) {
+        try { map[obj.id] = { url: new URL(obj.url).pathname, image: obj.imageUrl || obj.thumbnailImageUrl || '' }; }
+        catch (e) { map[obj.id] = { url: obj.url, image: obj.imageUrl || obj.thumbnailImageUrl || '' }; }
       }
-    } catch (e) {}
+      var keys = Object.keys(obj);
+      for (var k = 0; k < keys.length; k++) scan(obj[keys[k]], depth + 1);
+    }
+    scan(state, 0);
+    console.log('Mega nav: category map built with', Object.keys(map).length, 'entries');
     return map;
   }
 
@@ -108,29 +102,24 @@
     return [];
   }
 
-  /* ── Resolve URL: try categoryId map first, then fall back to '#' (fixed by scrape later) ── */
-  function resolveUrl(item, catMap) {
-    if (item.type === 'GO_TO_CATEGORY' && item.categoryId && catMap[item.categoryId]) {
-      return catMap[item.categoryId].url;
-    }
-    if (item.link) return item.link;
-    if (item.url) return item.url;
-    return '#';
-  }
-
-  /* ── Get category image for an item ── */
-  function resolveImage(item, catMap) {
-    if (item.type === 'GO_TO_CATEGORY' && item.categoryId && catMap[item.categoryId]) {
-      return catMap[item.categoryId].image;
-    }
-    return '';
-  }
-
-  /* ── Build initial config from initialState (URLs may be '#' for HYPER_LINK items) ── */
-  function buildInitialConfig(menuItem, catMap) {
+  /* ── Build config from initialState structure + scraped URL map ── */
+  function buildConfig(menuItem, catMap, urlMap) {
     var config = { sidebar: [], promos: defaultPromos };
     var nested = menuItem.nestedItems || [];
     if (nested.length === 0) return null;
+
+    function getUrl(item) {
+      /* Try scraped URL first (most reliable) */
+      if (urlMap[item.title]) return urlMap[item.title];
+      /* Try category map */
+      if (item.categoryId && catMap[item.categoryId]) return catMap[item.categoryId].url;
+      return '#';
+    }
+
+    function getImage(item) {
+      if (item.categoryId && catMap[item.categoryId]) return catMap[item.categoryId].image;
+      return '';
+    }
 
     var hasDeep = nested.some(function(n) {
       return n.nestedItems && n.nestedItems.length > 0;
@@ -141,66 +130,32 @@
         var children = [];
         if (cat.nestedItems) {
           cat.nestedItems.forEach(function(child) {
-            children.push({
-              label: child.title,
-              url: resolveUrl(child, catMap),
-              image: resolveImage(child, catMap)
-            });
+            children.push({ label: child.title, url: getUrl(child), image: getImage(child) });
           });
         }
         config.sidebar.push({
-          label: cat.title,
-          url: resolveUrl(cat, catMap),
-          image: resolveImage(cat, catMap),
-          children: children
+          label: cat.title, url: getUrl(cat), image: getImage(cat), children: children
         });
       });
     } else {
       var children = [];
       nested.forEach(function(item) {
-        children.push({
-          label: item.title,
-          url: resolveUrl(item, catMap),
-          image: resolveImage(item, catMap)
-        });
+        children.push({ label: item.title, url: getUrl(item), image: getImage(item) });
       });
       config.sidebar.push({
-        label: menuItem.title,
-        url: resolveUrl(menuItem, catMap),
-        image: resolveImage(menuItem, catMap),
-        children: children
+        label: menuItem.title, url: getUrl(menuItem), image: getImage(menuItem), children: children
       });
     }
-
     return config;
-  }
-
-  /* ── Merge scraped URLs into config (fills in '#' placeholders) ── */
-  function mergeScrapedUrls(config, scrapedMap) {
-    config.sidebar.forEach(function(cat) {
-      if (cat.url === '#' && scrapedMap[cat.label]) {
-        cat.url = scrapedMap[cat.label];
-      }
-      if (cat.children) {
-        cat.children.forEach(function(child) {
-          if (child.url === '#' && scrapedMap[child.label]) {
-            child.url = scrapedMap[child.label];
-          }
-        });
-      }
-    });
   }
 
   /* ── Build HTML ── */
   function buildMenu(config) {
     var html = '<div class="lm-wrap">';
-
     html += '<div class="lm-sidebar">';
     config.sidebar.forEach(function(cat, i) {
       html += '<a href="' + cat.url + '" data-idx="' + i + '"' + (i === 0 ? ' class="is-active"' : '') + '>';
-      if (cat.image) {
-        html += '<img src="' + cat.image + '" alt="' + cat.label + '" loading="lazy">';
-      }
+      if (cat.image) html += '<img src="' + cat.image + '" alt="' + cat.label + '" loading="lazy">';
       html += cat.label + '</a>';
     });
     html += '</div>';
@@ -211,9 +166,7 @@
       if (cat.children && cat.children.length > 0) {
         cat.children.forEach(function(child) {
           html += '<a class="lm-grid-item" href="' + child.url + '">';
-          if (child.image) {
-            html += '<img src="' + child.image + '" alt="' + child.label + '" loading="lazy">';
-          }
+          if (child.image) html += '<img src="' + child.image + '" alt="' + child.label + '" loading="lazy">';
           html += '<span>' + child.label + '</span></a>';
         });
         html += '<div class="lm-viewall"><a href="' + cat.url + '">View All ' + cat.label + ' &rarr;</a></div>';
@@ -236,7 +189,6 @@
       });
       html += '</div>';
     }
-
     html += '</div>';
     return html;
   }
@@ -256,7 +208,6 @@
     var catMap = buildCategoryMap();
     var menuItems = getMenuItems();
 
-    console.log('Mega nav: categories mapped:', Object.keys(catMap).length);
     console.log('Mega nav: menu items:', menuItems.map(function(m) { return m.title; }).join(', '));
 
     var overlay = document.createElement('div');
@@ -268,6 +219,7 @@
     document.body.appendChild(container);
 
     var closeTimeout = null;
+    var configCache = {};
 
     function closeMenu() {
       closeTimeout = setTimeout(function() {
@@ -276,7 +228,7 @@
       }, 200);
     }
 
-    function openMenu(config) {
+    function showMegaNav(config) {
       if (closeTimeout) { clearTimeout(closeTimeout); closeTimeout = null; }
       var header = nav.closest('header') || nav.parentElement;
       var headerRect = header.getBoundingClientRect();
@@ -300,13 +252,36 @@
       overlay.classList.add('is-open');
     }
 
-    /* Attach to each root nav item */
+    function hideVueDropdown(rootEl) {
+      for (var j = 0; j < rootEl.children.length; j++) {
+        var ch = rootEl.children[j];
+        if (ch.tagName === 'A') continue; /* skip the root link */
+        if (ch.querySelectorAll && ch.querySelectorAll('a').length > 0) {
+          ch.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important;pointer-events:none!important;';
+        }
+      }
+    }
+
+    function scrapeUrlsFromRoot(rootEl) {
+      var map = {};
+      var rootLink = rootEl.querySelector(':scope > a');
+      rootEl.querySelectorAll('a').forEach(function(a) {
+        if (a === rootLink) return;
+        var text = a.textContent.trim();
+        var href = a.getAttribute('href');
+        if (text && href && href !== '#' && href !== '') {
+          map[text] = href;
+        }
+      });
+      return map;
+    }
+
+    /* Attach to each root nav item that has dropdown children */
     nav.querySelectorAll('.root-item').forEach(function(rootEl) {
       var linkEl = rootEl.querySelector('a');
       if (!linkEl) return;
       var title = linkEl.textContent.trim();
 
-      /* Find matching initialState menu item */
       var menuItem = null;
       for (var i = 0; i < menuItems.length; i++) {
         if (menuItems[i].title === title && menuItems[i].nestedItems && menuItems[i].nestedItems.length > 0) {
@@ -316,52 +291,28 @@
       }
       if (!menuItem) return;
 
-      var config = buildInitialConfig(menuItem, catMap);
-      if (!config || config.sidebar.length === 0) return;
-
-      var urlsScraped = false;
-
       console.log('Mega nav: attached "' + title + '"');
 
-      /* MutationObserver: scrape URLs from Vue dropdown, then hide it */
-      new MutationObserver(function(mutations) {
-        mutations.forEach(function(m) {
-          for (var i = 0; i < m.addedNodes.length; i++) {
-            var node = m.addedNodes[i];
-            if (node.nodeType !== 1) continue;
-            var nodeLinks = node.querySelectorAll ? node.querySelectorAll('a') : [];
-            if (nodeLinks.length > 0 && !node.classList.contains('relative')) {
-              /* Scrape URLs before hiding (only need to do this once) */
-              if (!urlsScraped) {
-                var scrapedMap = {};
-                nodeLinks.forEach(function(a) {
-                  var text = a.textContent.trim();
-                  var href = a.getAttribute('href');
-                  if (text && href && href !== '#') {
-                    scrapedMap[text] = href;
-                  }
-                });
-                mergeScrapedUrls(config, scrapedMap);
-                urlsScraped = true;
-                console.log('Mega nav: scraped URLs for "' + title + '":', Object.keys(scrapedMap).join(', '));
-              }
-              /* Hide Vue dropdown */
-              node.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important;pointer-events:none!important;';
-            }
-          }
-        });
-      }).observe(rootEl, { childList: true, subtree: true });
-
       rootEl.addEventListener('mouseenter', function() {
-        openMenu(config);
+        if (configCache[title]) {
+          /* Already scraped — show immediately and suppress Vue dropdown */
+          hideVueDropdown(rootEl);
+          showMegaNav(configCache[title]);
+          return;
+        }
+
+        /* First hover: let Vue render the dropdown, then scrape after a short delay */
         setTimeout(function() {
-          for (var j = 0; j < rootEl.children.length; j++) {
-            var ch = rootEl.children[j];
-            if (ch.querySelectorAll && ch.querySelectorAll('a').length > 2 && !ch.classList.contains('relative')) {
-              ch.style.cssText = 'display:none!important;';
-            }
+          var urlMap = scrapeUrlsFromRoot(rootEl);
+          console.log('Mega nav: scraped "' + title + '":', JSON.stringify(urlMap));
+
+          var config = buildConfig(menuItem, catMap, urlMap);
+          if (config) {
+            configCache[title] = config;
+            hideVueDropdown(rootEl);
+            showMegaNav(config);
           }
-        }, 5);
+        }, 200);
       });
 
       rootEl.addEventListener('mouseleave', function() { closeMenu(); });
@@ -376,6 +327,6 @@
       overlay.classList.remove('is-open');
     });
 
-    console.log('Lighthouse mega nav v5 loaded');
+    console.log('Lighthouse mega nav v5.1 loaded');
   });
 })();
