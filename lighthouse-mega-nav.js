@@ -1,7 +1,10 @@
-/* Lighthouse Aquatics — Mega Nav v5.1 */
+/* Lighthouse Aquatics — Mega Nav v5.3 */
 
 (function() {
   var css = [
+    /* Hide Vue default dropdowns immediately so there is no flash */
+    '.root-item > div:not(.relative){opacity:0!important;position:absolute!important;pointer-events:none!important;z-index:-1!important}',
+
     '#ls-mega-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9998}',
     '#ls-mega-container{display:none;position:fixed;left:0;right:0;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,0.12);z-index:9999;margin-top:-1px}',
     '#ls-mega-container.is-open{display:block}',
@@ -20,7 +23,7 @@
 
     '.lm-grid-item{text-decoration:none;color:#333;text-align:center;padding:10px;border-radius:10px;transition:transform 0.15s}',
     '.lm-grid-item:hover{transform:translateY(-3px);background:#f8f9fa}',
-    '.lm-grid-item img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;margin-bottom:8px;background:#f0f0f0}',
+    '.lm-grid-item img{width:80px;height:80px;object-fit:cover;border-radius:10px;margin:0 auto 8px;display:block;background:#f0f0f0}',
     '.lm-grid-item span{font-size:13px;font-weight:600;display:block;color:#333}',
 
     '.lm-grid .lm-viewall{grid-column:1/-1;text-align:center;padding:8px 0}',
