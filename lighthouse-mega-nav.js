@@ -122,50 +122,54 @@
     'Live Corals': {
       sidebar: [
         {
-          label: 'LPS Corals',
+          label: 'Live Corals',
           url: '/products/corals-lps',
           children: [
-            { label: 'All LPS Corals', url: '/products/corals-lps' },
-            { label: 'Chalice Corals', url: '/products/corals-lps' },
-            { label: 'Torch Corals', url: '/products/corals-lps' },
-            { label: 'Goniopora', url: '/products/corals-lps' }
-          ]
-        },
-        {
-          label: 'SPS Corals',
-          url: '/products/corals-sps',
-          children: [
-            { label: 'All SPS Corals', url: '/products/corals-sps' },
             { label: 'Acropora', url: '/products/corals-sps' },
-            { label: 'Montipora', url: '/products/corals-sps' }
-          ]
-        },
-        {
-          label: 'Soft Corals',
-          url: '/products/corals-soft',
-          children: [
-            { label: 'All Soft Corals', url: '/products/corals-soft' },
-            { label: 'Zoanthids', url: '/products/corals-misc' },
-            { label: 'Beginner Corals', url: '/products/corals-soft' }
+            { label: 'Chalice Corals', url: '/products/corals-lps' },
+            { label: 'Goniopora', url: '/products/corals-lps' },
+            { label: 'LPS Corals', url: '/products/corals-lps' },
+            { label: 'Montipora', url: '/products/corals-sps' },
+            { label: 'Soft Corals', url: '/products/corals-soft' },
+            { label: 'SPS Corals', url: '/products/corals-sps' },
+            { label: 'Torch Corals', url: '/products/corals-lps' },
+            { label: 'Zoanthids', url: '/products/corals-misc' }
           ]
         },
         {
           label: 'WYSIWYG Corals',
           url: '/products/corals-misc',
-          children: [
-            { label: 'WYSIWYG Corals', url: '/products/corals-misc' },
-            { label: 'Signature Corals', url: '/products/corals-misc' },
-            { label: 'LHA Vault', url: '/products/corals-misc' }
-          ]
+          children: []
         },
         {
-          label: 'More Corals',
+          label: 'Signature Corals',
           url: '/products/corals-misc',
-          children: [
-            { label: 'Coral Colonies', url: '/products/corals-misc' },
-            { label: 'Coral Frag Packs', url: '/products/corals-misc' },
-            { label: 'Anemones', url: '/products/livestock' }
-          ]
+          children: []
+        },
+        {
+          label: 'LHA Vault',
+          url: '/products/corals-misc',
+          children: []
+        },
+        {
+          label: 'Coral Colonies',
+          url: '/products/corals-misc',
+          children: []
+        },
+        {
+          label: 'Beginner Corals',
+          url: '/products/corals-soft',
+          children: []
+        },
+        {
+          label: 'Coral Frag Packs',
+          url: '/products/corals-misc',
+          children: []
+        },
+        {
+          label: 'Anemones',
+          url: '/products/livestock',
+          children: []
         }
       ],
       promos: [
