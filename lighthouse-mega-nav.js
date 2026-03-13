@@ -1,4 +1,4 @@
-/* Lighthouse Aquatics — Mega Nav v4.2 (dynamic from initialState) */
+/* Lighthouse Aquatics — Mega Nav v5 (fully dynamic + images) */
 
 (function() {
   var css = [
@@ -12,14 +12,16 @@
     '.lm-sidebar{width:230px;min-width:230px;background:#f8f9fa;border-right:1px solid #eee;padding:12px 0;overflow-y:auto}',
     '.lm-sidebar a{display:flex;align-items:center;gap:12px;padding:10px 18px;font-size:14px;font-weight:500;color:#333;text-decoration:none;transition:all 0.12s;border-left:3px solid transparent}',
     '.lm-sidebar a:hover,.lm-sidebar a.is-active{background:#fff;color:#0073e6;border-left-color:#0073e6}',
+    '.lm-sidebar a img{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0}',
 
     '.lm-grid-wrap{flex:1;position:relative}',
-    '.lm-grid{display:none;grid-template-columns:repeat(3,1fr);gap:20px;padding:24px 28px;align-content:start;position:absolute;inset:0;overflow-y:auto}',
+    '.lm-grid{display:none;grid-template-columns:repeat(3,1fr);gap:18px;padding:24px 28px;align-content:start;position:absolute;inset:0;overflow-y:auto}',
     '.lm-grid.is-visible{display:grid}',
 
-    '.lm-grid-item{text-decoration:none;color:#333;padding:12px 16px;border-radius:10px;transition:background 0.15s;display:flex;align-items:center;gap:10px}',
-    '.lm-grid-item:hover{background:#f0f4ff}',
-    '.lm-grid-item span{font-size:14px;font-weight:600;display:block;color:#333}',
+    '.lm-grid-item{text-decoration:none;color:#333;text-align:center;padding:10px;border-radius:10px;transition:transform 0.15s}',
+    '.lm-grid-item:hover{transform:translateY(-3px);background:#f8f9fa}',
+    '.lm-grid-item img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;margin-bottom:8px;background:#f0f0f0}',
+    '.lm-grid-item span{font-size:13px;font-weight:600;display:block;color:#333}',
 
     '.lm-grid .lm-viewall{grid-column:1/-1;text-align:center;padding:8px 0}',
     '.lm-viewall a{font-size:14px;font-weight:600;color:#0073e6;text-decoration:none;display:inline-flex;align-items:center;gap:6px}',
@@ -49,100 +51,49 @@
     { img: TSAF + 'saltwater-aquarium-copepods_a5676231-b226-4496-88cc-889633207dd0.jpg?v=1742313702&width=800', text: 'Visit Us In Store', url: '/contact-us' }
   ];
 
-  /* ── Build a categoryId → URL map from initialState ── */
-  function parseState() {
+  /* ── Parse initialState (it's a JSON string) ── */
+  var _state = null;
+  function getState() {
+    if (_state) return _state;
     try {
       var raw = window.initialState;
       if (!raw) return null;
-      if (typeof raw === 'string') return JSON.parse(raw);
-      return raw;
-    } catch (e) {
-      console.warn('Mega nav: failed to parse initialState', e);
-      return null;
-    }
+      _state = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return _state;
+    } catch (e) { return null; }
   }
 
-  var _parsedState = null;
-  function getState() {
-    if (!_parsedState) _parsedState = parseState();
-    return _parsedState;
-  }
-
+  /* ── Build categoryId → {url, imageUrl} map ── */
   function buildCategoryMap() {
     var map = {};
     try {
       var state = getState();
       if (!state) return map;
-
-      /* Try storeData.categories */
       var ext = state.externalContent;
-      if (ext && ext.category) {
-        var sd = ext.category.storeData;
-        if (sd && sd.categories) {
-          sd.categories.forEach(function(cat) {
-            if (cat.id && cat.url) {
-              /* Extract pathname from full URL */
-              try {
-                map[cat.id] = new URL(cat.url).pathname;
-              } catch (e) {
-                map[cat.id] = cat.url;
-              }
-            }
-          });
-        }
-        /* Also try categoryTree */
-        if (ext.category.categoryTree) {
-          ext.category.categoryTree.forEach(function(cat) {
-            if (cat.id && cat.urlPath && !map[cat.id]) {
-              try {
-                map[cat.id] = new URL(cat.urlPath).pathname;
-              } catch (e) {
-                map[cat.id] = cat.urlPath;
-              }
-            }
-          });
-        }
+      if (ext && ext.category && ext.category.storeData && ext.category.storeData.categories) {
+        ext.category.storeData.categories.forEach(function(cat) {
+          if (cat.id) {
+            var url = cat.url || '';
+            try { url = new URL(url).pathname; } catch (e) {}
+            map[cat.id] = { url: url, image: cat.imageUrl || cat.thumbnailImageUrl || '', name: cat.name || '' };
+          }
+        });
       }
-
-      /* Also scan deeper in case categories are elsewhere */
-      function scanObj(obj, depth) {
-        if (depth > 4 || !obj || typeof obj !== 'object') return;
-        if (Array.isArray(obj)) {
-          obj.forEach(function(item) {
-            if (item && item.id && item.url && typeof item.url === 'string' && item.url.indexOf('/products/') !== -1) {
-              if (!map[item.id]) {
-                try { map[item.id] = new URL(item.url).pathname; } catch (e) { map[item.id] = item.url; }
-              }
-            }
-            scanObj(item, depth + 1);
-          });
-        } else {
-          Object.keys(obj).forEach(function(k) { scanObj(obj[k], depth + 1); });
-        }
+      /* Also try categoryTree */
+      if (ext && ext.category && ext.category.categoryTree) {
+        ext.category.categoryTree.forEach(function(cat) {
+          if (cat.id && !map[cat.id]) {
+            var url = cat.urlPath || cat.url || '';
+            try { url = new URL(url).pathname; } catch (e) {}
+            map[cat.id] = { url: url, image: '', name: cat.name || '' };
+          }
+        });
       }
-      scanObj(state, 0);
-    } catch (e) {
-      console.warn('Mega nav: category map error', e);
-    }
+    } catch (e) {}
     return map;
   }
 
-  /* ── Resolve URL for a menu item ── */
-  function resolveUrl(item, catMap, navLinkMap) {
-    /* GO_TO_CATEGORY: look up in category map */
-    if (item.type === 'GO_TO_CATEGORY' && item.categoryId && catMap[item.categoryId]) {
-      return catMap[item.categoryId];
-    }
-    /* HYPER_LINK: check link field, then match rendered nav links by title */
-    if (item.link) return item.link;
-    if (item.url) return item.url;
-    if (item.href) return item.href;
-    if (navLinkMap[item.title]) return navLinkMap[item.title];
-    /* Fallback: slugify */
-    return '/products/' + item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  }
-
-  /* ── Read menu items from initialState ── */
+  /* ── Get menu items from initialState ── */
   function getMenuItems() {
     try {
       var state = getState();
@@ -157,21 +108,26 @@
     return [];
   }
 
-  /* ── Build a title → href map from rendered nav links ── */
-  function getNavLinkMap(nav) {
-    var map = {};
-    nav.querySelectorAll('a').forEach(function(a) {
-      var text = a.textContent.trim();
-      var href = a.getAttribute('href');
-      if (text && href && href !== '#') {
-        map[text] = href;
-      }
-    });
-    return map;
+  /* ── Resolve URL: try categoryId map first, then fall back to '#' (fixed by scrape later) ── */
+  function resolveUrl(item, catMap) {
+    if (item.type === 'GO_TO_CATEGORY' && item.categoryId && catMap[item.categoryId]) {
+      return catMap[item.categoryId].url;
+    }
+    if (item.link) return item.link;
+    if (item.url) return item.url;
+    return '#';
   }
 
-  /* ── Build mega nav config from initialState item ── */
-  function buildConfig(menuItem, catMap, navLinkMap) {
+  /* ── Get category image for an item ── */
+  function resolveImage(item, catMap) {
+    if (item.type === 'GO_TO_CATEGORY' && item.categoryId && catMap[item.categoryId]) {
+      return catMap[item.categoryId].image;
+    }
+    return '';
+  }
+
+  /* ── Build initial config from initialState (URLs may be '#' for HYPER_LINK items) ── */
+  function buildInitialConfig(menuItem, catMap) {
     var config = { sidebar: [], promos: defaultPromos };
     var nested = menuItem.nestedItems || [];
     if (nested.length === 0) return null;
@@ -187,13 +143,15 @@
           cat.nestedItems.forEach(function(child) {
             children.push({
               label: child.title,
-              url: resolveUrl(child, catMap, navLinkMap)
+              url: resolveUrl(child, catMap),
+              image: resolveImage(child, catMap)
             });
           });
         }
         config.sidebar.push({
           label: cat.title,
-          url: resolveUrl(cat, catMap, navLinkMap),
+          url: resolveUrl(cat, catMap),
+          image: resolveImage(cat, catMap),
           children: children
         });
       });
@@ -202,17 +160,35 @@
       nested.forEach(function(item) {
         children.push({
           label: item.title,
-          url: resolveUrl(item, catMap, navLinkMap)
+          url: resolveUrl(item, catMap),
+          image: resolveImage(item, catMap)
         });
       });
       config.sidebar.push({
         label: menuItem.title,
-        url: resolveUrl(menuItem, catMap, navLinkMap),
+        url: resolveUrl(menuItem, catMap),
+        image: resolveImage(menuItem, catMap),
         children: children
       });
     }
 
     return config;
+  }
+
+  /* ── Merge scraped URLs into config (fills in '#' placeholders) ── */
+  function mergeScrapedUrls(config, scrapedMap) {
+    config.sidebar.forEach(function(cat) {
+      if (cat.url === '#' && scrapedMap[cat.label]) {
+        cat.url = scrapedMap[cat.label];
+      }
+      if (cat.children) {
+        cat.children.forEach(function(child) {
+          if (child.url === '#' && scrapedMap[child.label]) {
+            child.url = scrapedMap[child.label];
+          }
+        });
+      }
+    });
   }
 
   /* ── Build HTML ── */
@@ -222,6 +198,9 @@
     html += '<div class="lm-sidebar">';
     config.sidebar.forEach(function(cat, i) {
       html += '<a href="' + cat.url + '" data-idx="' + i + '"' + (i === 0 ? ' class="is-active"' : '') + '>';
+      if (cat.image) {
+        html += '<img src="' + cat.image + '" alt="' + cat.label + '" loading="lazy">';
+      }
       html += cat.label + '</a>';
     });
     html += '</div>';
@@ -232,6 +211,9 @@
       if (cat.children && cat.children.length > 0) {
         cat.children.forEach(function(child) {
           html += '<a class="lm-grid-item" href="' + child.url + '">';
+          if (child.image) {
+            html += '<img src="' + child.image + '" alt="' + child.label + '" loading="lazy">';
+          }
           html += '<span>' + child.label + '</span></a>';
         });
         html += '<div class="lm-viewall"><a href="' + cat.url + '">View All ' + cat.label + ' &rarr;</a></div>';
@@ -272,11 +254,9 @@
 
   waitForNav(function(nav) {
     var catMap = buildCategoryMap();
-    var navLinkMap = getNavLinkMap(nav);
     var menuItems = getMenuItems();
 
     console.log('Mega nav: categories mapped:', Object.keys(catMap).length);
-    console.log('Mega nav: nav links found:', Object.keys(navLinkMap).length);
     console.log('Mega nav: menu items:', menuItems.map(function(m) { return m.title; }).join(', '));
 
     var overlay = document.createElement('div');
@@ -320,13 +300,13 @@
       overlay.classList.add('is-open');
     }
 
-    /* Match root nav items to initialState menu items */
+    /* Attach to each root nav item */
     nav.querySelectorAll('.root-item').forEach(function(rootEl) {
       var linkEl = rootEl.querySelector('a');
       if (!linkEl) return;
       var title = linkEl.textContent.trim();
 
-      /* Find matching initialState item */
+      /* Find matching initialState menu item */
       var menuItem = null;
       for (var i = 0; i < menuItems.length; i++) {
         if (menuItems[i].title === title && menuItems[i].nestedItems && menuItems[i].nestedItems.length > 0) {
@@ -336,18 +316,36 @@
       }
       if (!menuItem) return;
 
-      var config = buildConfig(menuItem, catMap, navLinkMap);
+      var config = buildInitialConfig(menuItem, catMap);
       if (!config || config.sidebar.length === 0) return;
 
-      console.log('Mega nav: attached to "' + title + '" with', config.sidebar.length, 'sidebar items');
+      var urlsScraped = false;
 
-      /* Suppress Vue dropdown */
+      console.log('Mega nav: attached "' + title + '"');
+
+      /* MutationObserver: scrape URLs from Vue dropdown, then hide it */
       new MutationObserver(function(mutations) {
         mutations.forEach(function(m) {
           for (var i = 0; i < m.addedNodes.length; i++) {
             var node = m.addedNodes[i];
             if (node.nodeType !== 1) continue;
-            if (node.querySelectorAll && node.querySelectorAll('a').length > 0 && !node.classList.contains('relative')) {
+            var nodeLinks = node.querySelectorAll ? node.querySelectorAll('a') : [];
+            if (nodeLinks.length > 0 && !node.classList.contains('relative')) {
+              /* Scrape URLs before hiding (only need to do this once) */
+              if (!urlsScraped) {
+                var scrapedMap = {};
+                nodeLinks.forEach(function(a) {
+                  var text = a.textContent.trim();
+                  var href = a.getAttribute('href');
+                  if (text && href && href !== '#') {
+                    scrapedMap[text] = href;
+                  }
+                });
+                mergeScrapedUrls(config, scrapedMap);
+                urlsScraped = true;
+                console.log('Mega nav: scraped URLs for "' + title + '":', Object.keys(scrapedMap).join(', '));
+              }
+              /* Hide Vue dropdown */
               node.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important;pointer-events:none!important;';
             }
           }
@@ -378,6 +376,6 @@
       overlay.classList.remove('is-open');
     });
 
-    console.log('Lighthouse mega nav v4.2 loaded');
+    console.log('Lighthouse mega nav v5 loaded');
   });
 })();
